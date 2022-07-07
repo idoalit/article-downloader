@@ -7,6 +7,7 @@ lxml==4.9.1
 pick==1.2.0
 pycodestyle==2.8.0
 Pygments==2.12.0
+PyPDF2==2.4.2
 python-dateutil==2.8.2
 rich==12.4.4
 simple-term-menu==1.5.0
