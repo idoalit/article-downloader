@@ -31,6 +31,7 @@ progress = Progress(
     TransferSpeedColumn(),
     "•",
     TimeRemainingColumn(),
+    transient=True
 )
 
 done_event = Event()
@@ -53,7 +54,7 @@ class Parser(ABC):
         pass
 
     def selectIssue(self):
-        with console.status("[bold green]Get issue...") as status:
+        with console.status(f"[yellow]{self.journal_name} [bold green]get issue...") as status:
             issueLink, issueTexts = self.getIssue()
 
         selected, index = pick(issueTexts, "Select issue:")
@@ -61,7 +62,7 @@ class Parser(ABC):
 
     def copy_url(self, task_id: TaskID, url: str, path: str) -> None:
         """Copy data from a url to a local file."""
-        progress.console.log(f"Requesting {url}")
+        # progress.console.log(f"Requesting {url}")
         response = urlopen(url)
         # This will break if the response doesn't contain content length
         progress.update(task_id, total=int(response.info()["Content-length"]))
@@ -72,29 +73,28 @@ class Parser(ABC):
                 progress.update(task_id, advance=len(data))
                 if done_event.is_set():
                     return
-        progress.console.log(f"Downloaded {path}")
+                    
+        progress.update(task_id, visible=False)
+        # progress.console.log(f"Downloaded {path}")
 
     def download(self, urls: Iterable[str], dest_dir: str):
         """Download multiple files to the given directory."""
         files = []
         with progress:
             with ThreadPoolExecutor(max_workers=4) as pool:
-                n = 0
-                for url in urls:
+                for index, url in enumerate(urls):
                     filename = url.split("/")[-1]
                     dest_path = os.path.join(dest_dir, filename)
 
                     split_tup = os.path.splitext(dest_path)
                     if split_tup[1] != ".pdf":
-                        filename = f"{n}.pdf"
+                        filename = f"{index}.pdf"
                         dest_path = os.path.join(dest_dir, filename)
 
                     task_id = progress.add_task(
                         "download", filename=filename, start=False)
                     pool.submit(self.copy_url, task_id, url, dest_path)
                     files.append(dest_path)
-                    n += 1
-
         return files
 
     def merge(self, files, path):
@@ -126,7 +126,7 @@ class Parser(ABC):
             path = self.createOutputDirectory(issue)
 
             # get link download list
-            with console.status("[bold green]Get fultext link...") as status:
+            with console.status(f"[yellow]{name} [cyan]{issue} [bold green]get fulltext link...") as status:
                 articles = self.getLinkDownload(link)
 
             # download files
