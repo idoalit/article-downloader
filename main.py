@@ -17,12 +17,12 @@ def main():
             "Jurnal Kebidanan", #4
             "Jurnal Ners dan Kebidanan", #5
             "Jurnal Keperawatan Pajajaran", #6
-            "⛔ quit"
+            "⛔️ quit"
         ]
 
     selected, index = pick(options, title)
 
-    if selected == "⛔ quit":
+    if selected == "⛔️ quit":
         print("Bye!")
         exit()
 

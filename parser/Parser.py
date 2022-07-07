@@ -1,12 +1,45 @@
 import os
 from abc import ABC, abstractmethod
 from rich.console import Console
-from rich.progress import Progress
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    TaskID,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 from pick import pick
 from urllib.request import Request, urlopen
+from concurrent.futures import ThreadPoolExecutor
+import signal
+from functools import partial
+from threading import Event
+from typing import Iterable
 from PyPDF2 import PdfMerger
 
 console = Console()
+
+progress = Progress(
+    TextColumn("[bold blue]{task.fields[filename]}", justify="right"),
+    BarColumn(bar_width=None),
+    "[progress.percentage]{task.percentage:>3.1f}%",
+    "•",
+    DownloadColumn(),
+    "•",
+    TransferSpeedColumn(),
+    "•",
+    TimeRemainingColumn(),
+)
+
+done_event = Event()
+
+def handle_sigint(signum, frame):
+    done_event.set()
+
+signal.signal(signal.SIGINT, handle_sigint)
+
 
 class Parser(ABC):
     "Abstrak class untuk memparser issue dan link download"
@@ -26,32 +59,43 @@ class Parser(ABC):
         selected, index = pick(issueTexts, "Select issue:")
         return (selected, issueLink[index],)
 
-    def downloadAll(self, links, path):
+    def copy_url(self, task_id: TaskID, url: str, path: str) -> None:
+        """Copy data from a url to a local file."""
+        progress.console.log(f"Requesting {url}")
+        response = urlopen(url)
+        # This will break if the response doesn't contain content length
+        progress.update(task_id, total=int(response.info()["Content-length"]))
+        with open(path, "wb") as dest_file:
+            progress.start_task(task_id)
+            for data in iter(partial(response.read, 32768), b""):
+                dest_file.write(data)
+                progress.update(task_id, advance=len(data))
+                if done_event.is_set():
+                    return
+        progress.console.log(f"Downloaded {path}")
+
+    def download(self, urls: Iterable[str], dest_dir: str):
+        """Download multiple files to the given directory."""
         files = []
-        with console.status("[bold green]Downloading...") as status:
-            n = 0
-            while links:
-                article = links.pop(0)
-                output_path = os.path.join(path, f"{n}.pdf")
-                self.download(article, output_path)
-                files.append(output_path)
-                n += 1
+        with progress:
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                n = 0
+                for url in urls:
+                    filename = url.split("/")[-1]
+                    dest_path = os.path.join(dest_dir, filename)
+
+                    split_tup = os.path.splitext(dest_path)
+                    if split_tup[1] != ".pdf":
+                        filename = f"{n}.pdf"
+                        dest_path = os.path.join(dest_dir, filename)
+
+                    task_id = progress.add_task(
+                        "download", filename=filename, start=False)
+                    pool.submit(self.copy_url, task_id, url, dest_path)
+                    files.append(dest_path)
+                    n += 1
+
         return files
-
-    def download(self, url, path):
-        # make an HTTP request within a context manager
-        with requests.get(url, stream=True) as r:
-            
-            # check header to get content length, in bytes
-            total_length = int(r.headers.get("Content-Length"))
-
-            # implement progress bar with rich
-            with Progress(transient=True) as progress:
-                progress.add_task("Downloading", total=total_length)
-
-                # save file
-                with open(path, "wb") as file:
-                    file.write(response.read())
 
     def merge(self, files, path):
         with console.status("[bold green]Merging...") as status:
@@ -74,8 +118,9 @@ class Parser(ABC):
         try:
             # selected issue
             issue, link = self.selectIssue()
-            
-            issue = "".join([c for c in issue if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+
+            issue = "".join([c for c in issue if c.isalpha()
+                            or c.isdigit() or c == ' ']).rstrip()
 
             # create output direcotry
             path = self.createOutputDirectory(issue)
@@ -85,12 +130,13 @@ class Parser(ABC):
                 articles = self.getLinkDownload(link)
 
             # download files
-            files = self.downloadAll(articles, path)
+            files = self.download(articles, path)
 
             # merge downloaded files
             self.merge(files, os.path.join(path, f"{issue}.pdf"))
 
             # done
-            console.print(f"Download [red]{name} [yellow i]{issue} [bold green]Done!")
+            console.print(
+                f"Download [red]{name} [yellow i]{issue} [bold green]Done!")
         except Exception as e:
             console.print(f"[red]{e}")
