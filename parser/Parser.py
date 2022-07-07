@@ -1,6 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from rich.console import Console
+from rich.progress import Progress
 from pick import pick
 from urllib.request import Request, urlopen
 from PyPDF2 import PdfMerger
@@ -38,9 +39,19 @@ class Parser(ABC):
         return files
 
     def download(self, url, path):
-        response = urlopen(url)
-        with open(path, "wb") as file:
-            file.write(response.read())
+        # make an HTTP request within a context manager
+        with requests.get(url, stream=True) as r:
+            
+            # check header to get content length, in bytes
+            total_length = int(r.headers.get("Content-Length"))
+
+            # implement progress bar with rich
+            with Progress(transient=True) as progress:
+                progress.add_task("Downloading", total=total_length)
+
+                # save file
+                with open(path, "wb") as file:
+                    file.write(response.read())
 
     def merge(self, files, path):
         with console.status("[bold green]Merging...") as status:
