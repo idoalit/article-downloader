@@ -1,4 +1,5 @@
 import os
+import platform
 from abc import ABC, abstractmethod
 from rich.console import Console
 from rich.progress import (
@@ -106,7 +107,10 @@ class Parser(ABC):
             merge.close()
 
     def createOutputDirectory(self, issue):
-        path = os.path.join("output", self.journal_name, issue)
+        if platform.system() == 'Windows':
+            path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+        else:
+            path = os.path.join("output", self.journal_name, issue)
         if not os.path.exists(path):
             os.makedirs(path, exist_ok=False)
         return path

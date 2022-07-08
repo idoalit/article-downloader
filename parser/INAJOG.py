@@ -19,5 +19,5 @@ class INAJOG(Parser):
         html_page = urlopen(req).read()
         soup = BeautifulSoup(html_page, 'lxml')
         articles = [a['href'].replace('/view/', '/download/')
-                    for a in soup.find_all("a", class_="obj_galley_link pdf", href=True)]
+                    for a in soup.find_all("a", class_="pdf", href=True)]
         return articles
