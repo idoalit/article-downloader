@@ -32,3 +32,8 @@ Tinggal jalanin aja file `main.py`
 ```
 python3 main.py
 ```
+
+atau kamu juga bisa gunakan comman yang baru. Cara jalaninnya:
+```
+python3 app.py menu
+```
