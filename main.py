@@ -1,4 +1,4 @@
-from pick import pick
+import inquirer
 from time import sleep
 from parser.INAJOG import INAJOG
 from parser.kespro import KesPro
@@ -51,7 +51,12 @@ def main():
     options = [p for p in sorted(parsers.keys())]
     options.append("⛔️ quit")
 
-    selected, index = pick(options, title)
+    questions = [
+        inquirer.List('journal', message=title, choices=options)
+    ]
+    answers = inquirer.prompt(questions)
+    
+    selected = answers['journal']
 
     if selected == "⛔️ quit":
         print("Bye!")

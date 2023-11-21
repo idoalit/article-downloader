@@ -1,5 +1,6 @@
 import os
 import platform
+import inquirer
 from abc import ABC, abstractmethod
 from rich.console import Console
 from rich.progress import (
@@ -11,7 +12,6 @@ from rich.progress import (
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
-from pick import pick
 from urllib.request import Request, urlopen
 from concurrent.futures import ThreadPoolExecutor
 import signal
@@ -58,7 +58,13 @@ class Parser(ABC):
         with console.status(f"[yellow]{self.journal_name} [bold green]get issue...") as status:
             issueLink, issueTexts = self.getIssue()
 
-        selected, index = pick(issueTexts, "Select issue:")
+        questions = [
+        inquirer.List('issue', message="Select issue:", choices=issueTexts)
+        ]
+        answers = inquirer.prompt(questions)
+
+        selected = answers['issue']
+        index = issueTexts.index(selected)
         return (selected, issueLink[index],)
 
     def copy_url(self, task_id: TaskID, url: str, path: str) -> None:
@@ -108,7 +114,7 @@ class Parser(ABC):
 
     def createOutputDirectory(self, issue):
         if platform.system() == 'Windows':
-            path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+            path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', self.journal_name, issue)
         else:
             path = os.path.join("output", self.journal_name, issue)
         if not os.path.exists(path):
