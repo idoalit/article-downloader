@@ -58,12 +58,19 @@ class Parser(ABC):
         with console.status(f"[yellow]{self.journal_name} [bold green]get issue...") as status:
             issueLink, issueTexts = self.getIssue()
 
+        # add quit option
+        issueTexts.append("⛔️ quit")
+
         questions = [
         inquirer.List('issue', message="Select issue:", choices=issueTexts)
         ]
         answers = inquirer.prompt(questions)
 
         selected = answers['issue']
+
+        if selected == "⛔️ quit":
+            exit()
+
         index = issueTexts.index(selected)
         return (selected, issueLink[index],)
 
@@ -114,7 +121,7 @@ class Parser(ABC):
 
     def createOutputDirectory(self, issue):
         if platform.system() == 'Windows':
-            path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', self.journal_name, issue)
+            path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'Journals', self.journal_name, issue)
         else:
             path = os.path.join("output", self.journal_name, issue)
         if not os.path.exists(path):
@@ -148,5 +155,6 @@ class Parser(ABC):
             # done
             console.print(
                 f"Download [red]{name} [yellow i]{issue} [bold green]Done!")
+            console.print(f"Your files saved to: [green]{path}")
         except Exception as e:
             console.print(f"[red]{e}")
