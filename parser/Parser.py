@@ -97,6 +97,8 @@ class Parser(ABC):
         with progress:
             with ThreadPoolExecutor(max_workers=4) as pool:
                 for index, url in enumerate(urls):
+                    if url is None: continue
+                    
                     filename = url.split("/")[-1]
                     dest_path = os.path.join(dest_dir, filename)
 
