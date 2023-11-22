@@ -35,7 +35,7 @@ class MyUtils:
 
     def get_ojs_version(url):
         # Check if URL is OJS
-        ojs_url = re.sub("index\.php.*", "dbscripts/xml/version.xml", url)
+        ojs_url = re.sub(r"index.php.*", r"dbscripts/xml/version.xml", url)
         # Get the XML data from the URL
         response = requests.get(ojs_url)
         xml_data = response.text
